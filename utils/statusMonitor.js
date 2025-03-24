@@ -1,4 +1,4 @@
-// ✅ utils/statusMonitor.js (heartbeat monitor fixed by URL match)
+// ✅ utils/statusMonitor.js (debugging heartbeat matches)
 const axios = require('axios');
 
 const HEARTBEAT_URL_PART = process.env.HEARTBEAT_URL_PART;
@@ -14,7 +14,14 @@ async function updateBotStatus(client) {
       }
     });
 
-    const heartbeat = res.data.data.find(hb =>
+    const heartbeats = res.data.data;
+
+    console.log('[DEBUG] Available Heartbeats:');
+    heartbeats.forEach(hb => {
+      console.log(`→ ID: ${hb.id} | URL: ${hb.attributes.url}`);
+    });
+
+    const heartbeat = heartbeats.find(hb =>
       hb.attributes.url.includes(HEARTBEAT_URL_PART)
     );
 
