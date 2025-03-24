@@ -1,4 +1,4 @@
-// ✅ utils/statusMonitor.js — Updated with public status page monitoring
+// ✅ utils/statusMonitor.js — Safer Better Stack status parsing
 const axios = require('axios');
 
 const STATUS_PAGE_URL = process.env.STATUS_PAGE_URL;
@@ -14,14 +14,20 @@ async function updateBotStatus(client) {
       }
     });
 
-    const status = res.data.status.indicator;
+    const indicator = res?.data?.status?.indicator;
+    const description = res?.data?.status?.description;
+
+    if (!indicator) {
+      console.warn('[Status Monitor] ⚠ Unexpected response from status page:', res.data);
+    }
+
     let activity = 'Unknown status!';
     let type = 3; // WATCHING
 
-    if (status === 'none' || status === 'up') activity = 'over the BCSO.';
-    else if (status === 'maintenance') activity = 'Undergoing maintenance!';
+    if (indicator === 'none' || indicator === 'up') activity = 'over the BCSO.';
+    else if (indicator === 'maintenance') activity = 'Undergoing maintenance!';
 
-    console.log(`[Status Monitor] Status indicator: ${status} → Setting presence: Watching ${activity}`);
+    console.log(`[Status Monitor] Status indicator: ${indicator || 'undefined'} → Setting presence: Watching ${activity}`);
 
     await client.user.setPresence({
       activities: [{ name: `Watching ${activity}`, type }],
