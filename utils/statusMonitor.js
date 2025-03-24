@@ -48,7 +48,7 @@ async function updateBotStatus(client) {
 
     // Log status changes
     if (lastStatus && lastStatus !== sheetStatus && ['online', 'maintenance'].includes(sheetStatus)) {
-      const channel = client.channels.cache.get('1348499008363958282');
+      const channel = client.channels.cache.get('1353567659509157968');
       if (channel) {
         const embed = new EmbedBuilder()
           .setTitle('🔔 Status Update')
