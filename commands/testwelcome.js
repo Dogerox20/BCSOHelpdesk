@@ -3,9 +3,17 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('testwelcome')
-    .setDescription('DMs you the BCSO welcome message (for testing purposes).'),
+    .setDescription('Send the BCSO welcome message to a specified user.')
+    .addStringOption(option =>
+      option.setName('user_id')
+        .setDescription('The Discord ID of the user to DM')
+        .setRequired(true)
+    ),
 
-  async execute(interaction) {
+  async execute(interaction, client) {
+    const targetId = interaction.options.getString('user_id');
+    const targetUser = await client.users.fetch(targetId).catch(() => null);
+
     const welcomeEmbed = new EmbedBuilder()
       .setColor('#2f3136')
       .setTitle('👋 Welcome to the Blaine County Sheriff\'s Office!')
@@ -21,13 +29,18 @@ If you need any assistance with the bot, please run the **/help** command. For a
       )
       .setFooter({ text: 'BCSO Helpdesk • Automated Assistant' });
 
+    await interaction.deferReply({ ephemeral: true });
+
+    if (!targetUser) {
+      return interaction.editReply('❌ Could not find a user with that ID.');
+    }
+
     try {
-      await interaction.deferReply({ ephemeral: true }); // Acknowledge right away
-      await interaction.user.send({ embeds: [welcomeEmbed] });
-      await interaction.editReply('✅ Sent you a test welcome message via DM!');
+      await targetUser.send({ embeds: [welcomeEmbed] });
+      await interaction.editReply(`✅ Sent the welcome message to <@${targetUser.id}>.`);
     } catch (err) {
-      console.error(`[TestWelcome] Failed to DM ${interaction.user.tag}:`, err);
-      await interaction.editReply('❌ I couldn’t send you a DM. Do you have DMs disabled?');
+      console.error(`[TestWelcome] Failed to DM user ${targetId}:`, err);
+      await interaction.editReply('❌ I couldn’t send a DM to that user. They may have DMs disabled.');
     }
   },
 };
