@@ -1,11 +1,12 @@
 // ✅ utils/statusMonitor.js
 const axios = require('axios');
 
-const HEARTBEAT_ID = process.env.HEARTBEAT_ID; // Example: 'ssbWih5gwfxAHuBZQA18ZRw5'
+const HEARTBEAT_ID = process.env.HEARTBEAT_ID;
 const BETTERSTACK_API_KEY = process.env.BETTERSTACK_API_KEY;
 
 async function updateBotStatus(client) {
   try {
+    console.log('[Status Monitor] Fetching monitor status...');
     const res = await axios.get(`https://uptime.betterstack.com/api/v2/heartbeat-monitors`, {
       headers: {
         Authorization: `Bearer ${BETTERSTACK_API_KEY}`
@@ -18,18 +19,17 @@ async function updateBotStatus(client) {
     let activity = 'Unknown status!';
     let type = 3; // WATCHING
 
-    if (status === 'up') {
-      activity = 'over the LSPD.';
-    } else if (status === 'maintenance') {
-      activity = 'Undergoing maintenance!';
-    }
+    if (status === 'up') activity = 'over the BCSO.';
+    else if (status === 'maintenance') activity = 'Undergoing maintenance!';
+
+    console.log(`[Status Monitor] Status: ${status} → Setting presence to: Watching ${activity}`);
 
     await client.user.setPresence({
-      activities: [{ name: activity, type }],
+      activities: [{ name: `Watching ${activity}`, type }],
       status: 'online',
     });
   } catch (err) {
-    console.error('❌ Failed to fetch Better Stack status:', err.message);
+    console.error('[Status Monitor] Failed to update presence:', err.message);
   }
 }
 
