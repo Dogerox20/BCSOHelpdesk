@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const sheets = require('../utils/sheets');
-const { BOT_DATABASE_SHEET_ID, GENERAL_SHEET_ID } = require('../config');
+const { GENERAL_SHEET_ID, BOT_DATABASE_SHEET_ID } = require('../config');
 const logCommand = require('../utils/embedLogger');
 
 function convertExcelTimeToHHMMSS(serial) {
