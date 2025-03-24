@@ -1,7 +1,14 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, entersState, VoiceConnectionStatus } = require('@discordjs/voice');
-const path = require('path');
+const {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  entersState,
+  AudioPlayerStatus,
+  VoiceConnectionStatus,
+} = require('@discordjs/voice');
 const fs = require('fs');
+const path = require('path');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -21,33 +28,37 @@ module.exports = {
       return interaction.reply({ content: '❌ You must be in a voice channel to use this command.', ephemeral: true });
     }
 
-    try {
-      await interaction.reply({ content: '🔊 Attempting to play audio...' });
+    const filePath = path.join(__dirname, '..', 'audio', 'troll.mp3');
 
+    if (!fs.existsSync(filePath)) {
+      console.error('❌ File not found:', filePath);
+      return interaction.reply({ content: '❌ Audio file not found.', ephemeral: true });
+    }
+
+    await interaction.reply({ content: '🔊 Attempting to play audio...' });
+
+    try {
       const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: interaction.guild.id,
         adapterCreator: interaction.guild.voiceAdapterCreator,
+        selfDeaf: false,
       });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 5_000);
-
-      const player = createAudioPlayer();
-      const filePath = path.join(__dirname, '..', 'audio', 'troll.mp3');
-
-      // Check if file exists
-      if (!fs.existsSync(filePath)) {
-        console.error('❌ File not found at:', filePath);
-        return interaction.editReply({ content: `❌ Audio file not found.` });
-      }
-
-      console.log('✅ Playing file from:', filePath);
+      await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
+      console.log('✅ Voice connection established.');
 
       const resource = createAudioResource(filePath);
-      connection.subscribe(player);
-      player.play(resource);
+      const player = createAudioPlayer();
 
-      player.once(AudioPlayerStatus.Idle, () => {
+      player.play(resource);
+      connection.subscribe(player);
+
+      await entersState(player, AudioPlayerStatus.Playing, 5_000);
+      console.log('▶️ Audio is now playing.');
+
+      player.on(AudioPlayerStatus.Idle, () => {
+        console.log('🔈 Playback finished.');
         connection.destroy();
       });
 
