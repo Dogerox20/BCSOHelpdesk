@@ -1,19 +1,19 @@
+
 const { SlashCommandBuilder } = require('discord.js');
 const sheets = require('../utils/sheets');
+const checkBlacklist = require('../utils/checkBlacklist');
 const logCommand = require('../utils/embedLogger');
-const checkBlacklist = require('./checkBlacklist');
-const { BOT_DATABASE_SHEET_ID, GENERAL_SHEET_ID, ALLOWED_ROLE_ID } = require('../config');
+const { BOT_DATABASE_SHEET_ID, GENERAL_MEMBERSHIP_SHEET_ID, ALLOWED_ROLE_ID } = require('../config');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('clockin')
-    .setDescription('Clock in for duty.'),
+    .setDescription('Clock in to start your shift.'),
 
   async execute(interaction, client) {
     try {
-      const memberRoles = interaction.member.roles.cache;
-      const requiredRole = interaction.guild.roles.cache.get(ALLOWED_ROLE_ID);
-      const hasPermission = memberRoles.some(role => role.position >= requiredRole.position);
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      const hasPermission = member.roles.cache.some(role => role.id === ALLOWED_ROLE_ID || role.position >= interaction.guild.roles.cache.get(ALLOWED_ROLE_ID).position);
 
       if (!hasPermission) {
         await interaction.reply({ content: '❌ You are not a high enough of a rank to use this command!', ephemeral: true });
@@ -22,77 +22,78 @@ module.exports = {
           commandName: 'clockin',
           user: interaction.user,
           status: 'Denied',
-          description: 'User did not have the required role.'
+          description: '❌ Insufficient rank to clock in.',
         });
         return;
       }
 
       const discordId = interaction.user.id;
-      const blacklistReason = await checkBlacklist(discordId);
 
+      // Check blacklist
+      const blacklistReason = await checkBlacklist(discordId);
       if (blacklistReason) {
-        await interaction.reply({ content: `❌ You are blacklisted from using this command.
+        await interaction.reply({ content: `❌ You are blacklisted from clocking in.
 **Reason:** ${blacklistReason}`, ephemeral: true });
         await logCommand({
           client,
           commandName: 'clockin',
           user: interaction.user,
-          status: 'Blacklisted',
-          description: `Tried to clock in while blacklisted. Reason: ${blacklistReason}`,
+          status: 'Denied',
+          description: `❌ User is blacklisted. Reason: ${blacklistReason}`,
         });
         return;
       }
 
-      const range = 'ACTIVECLOCKINS!A2:A';
-      const res = await sheets.spreadsheets.values.get({
+      // Check if user already clocked in
+      const getRes = await sheets.spreadsheets.values.get({
         spreadsheetId: BOT_DATABASE_SHEET_ID,
-        range,
+        range: 'ACTIVECLOCKINS!A2:A',
       });
 
-      const rows = res.data.values || [];
-      const rowIndex = rows.findIndex(row => row[0] === discordId);
+      const rows = getRes.data.values || [];
+      const alreadyClockedIn = rows.some(row => row[0] === discordId);
 
-      if (rowIndex !== -1) {
+      if (alreadyClockedIn) {
         await interaction.reply({ content: '❌ You are already clocked in. Please clock out before clocking in again.', ephemeral: true });
         await logCommand({
           client,
           commandName: 'clockin',
           user: interaction.user,
           status: 'Failed',
-          description: 'Attempted to clock in while already clocked in.',
+          description: '❌ User tried to clock in while already clocked in.',
         });
         return;
       }
 
-      const now = new Date();
-      const formatted = now.toLocaleTimeString('en-US', { hour12: false });
-
       // Find next empty row
-      const emptyIndex = rows.findIndex(row => !row[0]);
-      const targetRow = emptyIndex !== -1 ? emptyIndex + 2 : rows.length + 2;
+      const emptyRowIndex = rows.length + 2;
+
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+      const updateRange = `ACTIVECLOCKINS!A${emptyRowIndex}:B${emptyRowIndex}`;
 
       await sheets.spreadsheets.values.update({
         spreadsheetId: BOT_DATABASE_SHEET_ID,
-        range: `ACTIVECLOCKINS!A${targetRow}:B${targetRow}`,
+        range: updateRange,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[discordId, formatted]],
+          values: [[discordId, timeString]],
         },
       });
 
-      await interaction.reply({ content: `✅ You have successfully clocked in at **${formatted}**.`, ephemeral: true });
+      await interaction.reply({ content: '✅ You have been clocked in successfully!', ephemeral: true });
 
       await logCommand({
         client,
         commandName: 'clockin',
         user: interaction.user,
         status: 'Success',
-        description: `Clocked in at ${formatted}. (Row ${targetRow})`,
+        description: `🕒 Clock-in recorded at ${timeString} in row ${emptyRowIndex}.`,
       });
-
     } catch (err) {
       console.error(err);
-      await interaction.reply({ content: '❌ An error occurred while processing the command.', ephemeral: true });
+      await interaction.reply({ content: '❌ An unexpected error occurred while processing the clockin.', ephemeral: true });
+
       await logCommand({
         client,
         commandName: 'clockin',
