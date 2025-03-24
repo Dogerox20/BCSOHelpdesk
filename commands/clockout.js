@@ -1,13 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
 const sheets = require('../utils/sheets');
 const logCommand = require('../utils/embedLogger');
-const checkBlacklist = require('../utils/checkBlacklist');
+const { BOT_DATABASE_SHEET_ID, SHEET_ID } = require('../config');
 const { startSurvey } = require('../utils/surveyManager');
-const { SHEET_ID, BOT_DATABASE_SHEET_ID, LOG_CHANNEL_ID, CLOCKIN_ROLE_ID } = require('../config');
-
-function formatTime(date) {
-  return date.toLocaleTimeString('en-US', { hour12: false });
-}
 
 function formatDuration(ms) {
   const totalSeconds = Math.floor(ms / 1000);
@@ -17,119 +12,150 @@ function formatDuration(ms) {
   return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-function parseDuration(duration) {
-  const [h, m, s] = duration.split(':').map(Number);
-  return (h * 3600 + m * 60 + s) * 1000;
+function parseTimeString(timeStr) {
+  if (!timeStr) return 0;
+  const [hrs, mins, secs] = timeStr.split(':').map(Number);
+  return (hrs * 3600 + mins * 60 + secs) * 1000;
 }
 
 module.exports = {
-  data: new SlashCommandBuilder().setName('clockout').setDescription('Clock out of your shift.'),
+  data: new SlashCommandBuilder()
+    .setName('clockout')
+    .setDescription('Clock out and log your shift.'),
 
   async execute(interaction, client) {
     const discordId = interaction.user.id;
-
-    // Role check
-    const hasClockinRole = interaction.member.roles.cache.has(CLOCKIN_ROLE_ID);
-    if (!hasClockinRole) {
+    const allowedRoleId = '1348493509698781216';
+    const hasRank = interaction.member.roles.cache.has(allowedRoleId);
+    if (!hasRank) {
       await interaction.reply({ content: '❌ You are not a high enough of a rank to use this command!', ephemeral: true });
-      return logCommand({
+      await logCommand({
         client,
         commandName: 'clockout',
         user: interaction.user,
         status: 'Denied',
-        description: `User lacks rank role to run clockout.`,
+        description: `User did not meet rank requirement (missing role ID ${allowedRoleId}).`
       });
-    }
-
-    // Check blacklist
-    const reason = await checkBlacklist(discordId);
-    if (reason) {
-      await interaction.reply({ content: `❌ You are blacklisted from using this command. Reason: ${reason}`, ephemeral: true });
-      return logCommand({
-        client,
-        commandName: 'clockout',
-        user: interaction.user,
-        status: 'Blacklisted',
-        description: `Attempted clockout but is blacklisted. Reason: ${reason}`,
-      });
-    }
-
-    const activeRes = await sheets.spreadsheets.values.get({
-      spreadsheetId: BOT_DATABASE_SHEET_ID,
-      range: 'ACTIVECLOCKINS!A2:C',
-    });
-
-    const rows = activeRes.data.values || [];
-    const rowIndex = rows.findIndex(row => row[0] === discordId);
-    if (rowIndex === -1) {
-      await interaction.reply({ content: '❌ You are not clocked in.', ephemeral: true });
       return;
     }
 
-    const [id, startTime] = rows[rowIndex];
-    const startDate = new Date(startTime);
-    const endDate = new Date();
-    const durationMs = endDate - startDate;
-    const formattedDuration = formatDuration(durationMs);
+    const activeSheet = 'ACTIVECLOCKINS';
+    const logSheet = 'LOGGEDCLOCKINS';
+    const generalSheet = 'General-Membership';
+    const endTime = new Date();
+    const endTimeFormatted = endTime.toLocaleString('en-US', { timeZone: 'America/Chicago' });
+    const timestamp = new Date().toISOString();
 
-    const formattedStart = formatTime(startDate);
-    const formattedEnd = formatTime(endDate);
-
-    const logRange = `LOGGEDCLOCKINS!A2:E`;
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: BOT_DATABASE_SHEET_ID,
-      range: logRange,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [[discordId, formattedStart, formattedEnd, formattedDuration, new Date().toLocaleString()]],
-      },
-    });
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: BOT_DATABASE_SHEET_ID,
-      range: `ACTIVECLOCKINS!A${rowIndex + 2}:D${rowIndex + 2}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [['', '', '', '']] },
-    });
-
-    // Add duration to R12:R118
-    const gmRes = await sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: 'General-Membership!F12:F118',
-    });
-
-    const gmRows = gmRes.data.values || [];
-    const matchIndex = gmRows.findIndex(row => row[0] === discordId);
-    if (matchIndex !== -1) {
-      const rRow = matchIndex + 12;
-      const quotaRange = `General-Membership!R${rRow}`;
-      const current = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID,
-        range: quotaRange,
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: BOT_DATABASE_SHEET_ID,
+        range: `${activeSheet}!A2:C`,
       });
 
-      const currentDuration = current.data.values?.[0]?.[0] || '00:00:00';
-      const totalDuration = formatDuration(parseDuration(currentDuration) + durationMs);
+      const rows = res.data.values || [];
+      const rowIndex = rows.findIndex(row => row[0] === discordId);
+
+      if (rowIndex === -1) {
+        await interaction.reply({ content: '❌ You are not currently clocked in.', ephemeral: true });
+
+        await logCommand({
+          client,
+          commandName: 'clockout',
+          user: interaction.user,
+          status: 'Failed',
+          description: `User attempted to clock out but was not clocked in.`,
+        });
+        return;
+      }
+
+      const actualRow = rowIndex + 2;
+      const startTimeRaw = rows[rowIndex][1];
+      const startTime = new Date(startTimeRaw);
+
+      if (isNaN(startTime)) {
+        await interaction.reply({ content: '❌ Invalid start time format. Please contact an admin.', ephemeral: true });
+        return;
+      }
+
+      const sessionMs = endTime - startTime;
+      const sessionTime = formatDuration(sessionMs);
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: BOT_DATABASE_SHEET_ID,
+        range: `${logSheet}!A:E`,
+        valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: {
+          values: [[
+            discordId,
+            startTime.toLocaleString('en-US', { timeZone: 'America/Chicago' }),
+            endTimeFormatted,
+            sessionTime,
+            timestamp,
+          ]]
+        }
+      });
 
       await sheets.spreadsheets.values.update({
-        spreadsheetId: SHEET_ID,
-        range: quotaRange,
+        spreadsheetId: BOT_DATABASE_SHEET_ID,
+        range: `${activeSheet}!A${actualRow}:C${actualRow}`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[totalDuration]] },
+        requestBody: { values: [['', '', '']] },
+      });
+
+      const idRange = 'F12:F118';
+      const idRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${generalSheet}!${idRange}`,
+      });
+
+      const ids = idRes.data.values?.flat() || [];
+      const idIndex = ids.findIndex(id => id === discordId);
+
+      if (idIndex !== -1) {
+        const rowNumber = idIndex + 12;
+        const currentTimeRes = await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ID,
+          range: `${generalSheet}!R${rowNumber}`,
+        });
+
+        const currentTime = currentTimeRes.data.values?.[0]?.[0] || '00:00:00';
+        const newTotalMs = parseTimeString(currentTime) + sessionMs;
+        const newTotalFormatted = formatDuration(newTotalMs);
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `${generalSheet}!R${rowNumber}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[newTotalFormatted]] },
+        });
+      }
+
+      await interaction.reply({ content: `✅ You have clocked out. Total time: **${sessionTime}**`, ephemeral: true });
+
+      await logCommand({
+        client,
+        commandName: 'clockout',
+        user: interaction.user,
+        status: 'Success',
+        description: `Clocked out. Duration: ${sessionTime} — Time added to General-Membership sheet.`,
+      });
+
+      await startSurvey(interaction.user, client);
+
+    } catch (error) {
+      console.error(error);
+      if (!interaction.replied) {
+        await interaction.reply({ content: '❌ An error occurred while clocking you out.', ephemeral: true });
+      }
+
+      await logCommand({
+        client,
+        commandName: 'clockout',
+        user: interaction.user,
+        status: 'Error',
+        description: `❌ ${error.message}`,
       });
     }
-
-    await interaction.reply({ content: `✅ Clocked out! Time worked: **${formattedDuration}**`, ephemeral: true });
-
-    await logCommand({
-      client,
-      commandName: 'clockout',
-      user: interaction.user,
-      status: 'Success',
-      description: `Clocked out successfully. Time worked: ${formattedDuration}`,
-    });
-
-    // Trigger post-shift survey
-    await startSurvey(interaction.user, client);
-  },
+  }
 };
