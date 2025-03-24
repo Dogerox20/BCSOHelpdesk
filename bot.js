@@ -36,6 +36,10 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
+  // 🔁 Send heartbeat and status immediately on startup
+  sendHeartbeat();
+  updateBotStatus(client);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -64,7 +68,7 @@ client.on('interactionCreate', async interaction => {
 // Register survey modals and buttons
 registerSurveyListeners(client);
 
-// Start heartbeat & status checks
+// 🔁 Ongoing Better Stack heartbeat + status loop
 setInterval(() => {
   sendHeartbeat();
   updateBotStatus(client);
