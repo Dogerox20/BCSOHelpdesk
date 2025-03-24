@@ -1,11 +1,12 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, entersState, VoiceConnectionStatus } = require('@discordjs/voice');
 const path = require('path');
+const fs = require('fs');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('Plays the troll.mp3 audio file (for authorized user only).'),
+    .setDescription('Plays troll.mp3 (only for authorized user).'),
 
   async execute(interaction) {
     const allowedUserId = '1229398099567317023';
@@ -34,6 +35,14 @@ module.exports = {
       const player = createAudioPlayer();
       const filePath = path.join(__dirname, '..', 'audio', 'troll.mp3');
 
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error('❌ File not found at:', filePath);
+        return interaction.editReply({ content: `❌ Audio file not found.` });
+      }
+
+      console.log('✅ Playing file from:', filePath);
+
       const resource = createAudioResource(filePath);
       connection.subscribe(player);
       player.play(resource);
@@ -43,7 +52,7 @@ module.exports = {
       });
 
     } catch (err) {
-      console.error('Playback error:', err);
+      console.error('❌ Playback Error:', err);
       await interaction.editReply({ content: '❌ Failed to connect or play audio.' });
     }
   }
