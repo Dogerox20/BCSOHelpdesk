@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "main": "bot.js",
- "scripts": {
-  "start": "node bot.js"
-},
+  "scripts": {
+    "start": "node bot.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "axios": "^1.8.4",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "googleapis": "^148.0.0"
