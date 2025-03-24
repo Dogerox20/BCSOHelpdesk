@@ -22,7 +22,7 @@ async function updateBotStatus(client) {
       activity = 'over BCSO operations.';
       presence = 'online';
     } else if (sheetStatus === 'maintenance') {
-      activity = 'maintenance mode';
+      activity = 'maintenance mode.';
       presence = 'idle';
     }
 
