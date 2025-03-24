@@ -1,22 +1,25 @@
-// ✅ utils/statusMonitor.js (for heartbeat monitor)
+// ✅ utils/statusMonitor.js (heartbeat monitor fixed by URL match)
 const axios = require('axios');
 
-const HEARTBEAT_ID = process.env.HEARTBEAT_ID;
+const HEARTBEAT_URL_PART = process.env.HEARTBEAT_URL_PART;
 const BETTERSTACK_API_KEY = process.env.BETTERSTACK_API_KEY;
 
 async function updateBotStatus(client) {
   try {
     console.log('[Status Monitor] Checking heartbeat status...');
+
     const res = await axios.get('https://uptime.betterstack.com/api/v1/heartbeats', {
       headers: {
         Authorization: `Bearer ${BETTERSTACK_API_KEY}`
       }
     });
 
-    const heartbeat = res.data.data.find(hb => hb.id === HEARTBEAT_ID);
+    const heartbeat = res.data.data.find(hb =>
+      hb.attributes.url.includes(HEARTBEAT_URL_PART)
+    );
 
     if (!heartbeat) {
-      console.log(`[Status Monitor] ❌ Heartbeat with ID '${HEARTBEAT_ID}' not found.`);
+      console.log(`[Status Monitor] ❌ No heartbeat found matching URL part: ${HEARTBEAT_URL_PART}`);
       return;
     }
 
@@ -37,6 +40,7 @@ async function updateBotStatus(client) {
       activities: [{ name: `Watching ${activity}`, type }],
       status: 'online',
     });
+
   } catch (err) {
     console.error('[Status Monitor] Failed to update presence:', err.message);
   }
