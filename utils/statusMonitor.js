@@ -42,8 +42,8 @@ async function updateBotStatus(client) {
           .setColor(sheetStatus === 'online' ? 0x00b15e : 0xffcc00)
           .setDescription(
             sheetStatus === 'online'
-              ? '✅ The system is now **Online** and operational.'
-              : '🛠️ The system has entered **Maintenance Mode** please check the status page for more information you can locate it in the bots About Me section.'
+              ? '✅ The system is now **Online** and operational. Commands should work as intended.'
+              : '🛠️ The system has entered **Maintenance Mode** please check the status page for more information you can locate it in the bots About Me section. ***Commands may not be operable during maintenance.***'
           )
           .setFooter({ text: 'BCSO Helpdesk Status', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
