@@ -6,6 +6,7 @@ const path = require('path');
 const logCommand = require('./utils/embedLogger');
 const { registerSurveyListeners } = require('./utils/surveyManager');
 const sendHeartbeat = require('./utils/heartbeat');
+const updateBotStatus = require('./utils/statusMonitor');
 
 const client = new Client({
   intents: [
@@ -41,7 +42,6 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
-
   if (!command) return;
 
   try {
@@ -61,10 +61,13 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Register survey listeners for modals/buttons
+// Register survey modals and buttons
 registerSurveyListeners(client);
 
-// Start Better Stack Heartbeat
-setInterval(sendHeartbeat, 60 * 1000); // every 60 seconds
+// Start heartbeat & status checks
+setInterval(() => {
+  sendHeartbeat();
+  updateBotStatus(client);
+}, 60 * 1000);
 
 client.login(process.env.DISCORD_TOKEN);
