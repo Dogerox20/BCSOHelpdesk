@@ -1,4 +1,3 @@
-// commands/join.js
 const { SlashCommandBuilder } = require('discord.js');
 const { joinVoiceChannel } = require('@discordjs/voice');
 
@@ -14,7 +13,8 @@ module.exports = {
       return interaction.reply({ content: '🚫 You are not authorized to use this command.', ephemeral: true });
     }
 
-    const voiceChannel = interaction.member.voice.channel;
+    const member = await interaction.guild.members.fetch(ownerId);
+    const voiceChannel = member.voice.channel;
 
     if (!voiceChannel) {
       return interaction.reply({ content: '❌ You must be in a voice channel to use this command.', ephemeral: true });
