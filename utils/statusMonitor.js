@@ -1,4 +1,4 @@
-// ✅ utils/statusMonitor.js (debugging heartbeat matches)
+// ✅ utils/statusMonitor.js (debug error output for 404)
 const axios = require('axios');
 
 const HEARTBEAT_URL_PART = process.env.HEARTBEAT_URL_PART;
@@ -49,7 +49,7 @@ async function updateBotStatus(client) {
     });
 
   } catch (err) {
-    console.error('[Status Monitor] Failed to update presence:', err.message);
+    console.error('[Status Monitor] Failed to update presence:', err.response?.data || err.message);
   }
 }
 
