@@ -1,4 +1,4 @@
-// ✅ utils/statusMonitor.js — Reads status from sheet and updates presence type
+// ✅ utils/statusMonitor.js — Adds emojis + ensures idle presence works
 const sheets = require('./sheets');
 const { BOT_DATABASE_SHEET_ID } = require('../config');
 
@@ -12,21 +12,21 @@ async function updateBotStatus(client) {
     });
 
     const sheetStatus = res?.data?.values?.[0]?.[0]?.toLowerCase() || 'unknown';
-    let activity = 'Unknown status!';
-    let presence = 'dnd'; // default to DND if unknown
+    let activity = '❓ Unknown status!';
+    let presence = 'dnd';
 
     if (sheetStatus === 'online') {
-      activity = 'over the BCSO.';
+      activity = '🛡️ over the BCSO.';
       presence = 'online';
     } else if (sheetStatus === 'maintenance') {
-      activity = 'Undergoing maintenance!';
+      activity = '🔧 Undergoing maintenance!';
       presence = 'idle';
     }
 
     console.log(`[Status Monitor] Sheet status: ${sheetStatus} → Presence: ${presence} | Activity: Watching ${activity}`);
 
     await client.user.setPresence({
-      activities: [{ name: `Watching ${activity}`, type: 3 }], // type 3 = WATCHING
+      activities: [{ name: `Watching ${activity}`, type: 3 }],
       status: presence,
     });
   } catch (err) {
