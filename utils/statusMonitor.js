@@ -1,25 +1,14 @@
-// ✅ utils/statusMonitor.js — Safer Better Stack status parsing
+// ✅ utils/statusMonitor.js — Finalized using Better Stack official status.json
 const axios = require('axios');
 
-const STATUS_PAGE_URL = process.env.STATUS_PAGE_URL;
-const BETTERSTACK_API_KEY = process.env.BETTERSTACK_API_KEY;
+const STATUS_PAGE_URL = 'https://status.betterstack.com/api/v2/status.json';
 
 async function updateBotStatus(client) {
   try {
-    console.log('[Status Monitor] Fetching status from Better Stack status page...');
+    console.log('[Status Monitor] Fetching official Better Stack status...');
 
-    const res = await axios.get(STATUS_PAGE_URL, {
-      headers: {
-        Authorization: `Bearer ${BETTERSTACK_API_KEY}`
-      }
-    });
-
+    const res = await axios.get(STATUS_PAGE_URL);
     const indicator = res?.data?.status?.indicator;
-    const description = res?.data?.status?.description;
-
-    if (!indicator) {
-      console.warn('[Status Monitor] ⚠ Unexpected response from status page:', res.data);
-    }
 
     let activity = 'Unknown status!';
     let type = 3; // WATCHING
@@ -33,6 +22,7 @@ async function updateBotStatus(client) {
       activities: [{ name: `Watching ${activity}`, type }],
       status: 'online',
     });
+
   } catch (err) {
     console.error('[Status Monitor] Failed to update presence:', err.response?.data || err.message);
   }
