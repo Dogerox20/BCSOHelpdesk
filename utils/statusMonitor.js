@@ -23,7 +23,7 @@ async function updateBotStatus(client) {
       
       const deputyRes = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
-        range: 'General-Membership!P16'
+        range: 'Homepage!P16'
       });
 
       
@@ -42,7 +42,7 @@ async function updateBotStatus(client) {
     console.log(`[Status Monitor] Sheet status: ${sheetStatus} → Presence: ${presence} | Activity: ${activity}`);
 
     await client.user.setPresence({
-      activities: [{ name: `Watching ${activity}`, type: 3 }],
+      activities: [{ name: activity, type: 3 }],
       status: presence,
     });
 
