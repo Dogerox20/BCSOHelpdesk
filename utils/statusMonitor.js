@@ -1,30 +1,36 @@
-// ✅ utils/statusMonitor.js — Finalized using Better Stack official status.json
-const axios = require('axios');
-
-const STATUS_PAGE_URL = 'https://status.betterstack.com/api/v2/status.json';
+// ✅ utils/statusMonitor.js — Reads status from sheet and updates presence type
+const sheets = require('./sheets');
+const { BOT_DATABASE_SHEET_ID } = require('../config');
 
 async function updateBotStatus(client) {
   try {
-    console.log('[Status Monitor] Fetching official Better Stack status...');
+    console.log('[Status Monitor] Checking status from sheet...');
 
-    const res = await axios.get(STATUS_PAGE_URL);
-    const indicator = res?.data?.status?.indicator;
-
-    let activity = 'Unknown status!';
-    let type = 3; // WATCHING
-
-    if (indicator === 'none' || indicator === 'up') activity = 'over the BCSO.';
-    else if (indicator === 'maintenance') activity = 'Undergoing maintenance!';
-
-    console.log(`[Status Monitor] Status indicator: ${indicator || 'undefined'} → Setting presence: Watching ${activity}`);
-
-    await client.user.setPresence({
-      activities: [{ name: `Watching ${activity}`, type }],
-      status: 'online',
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: BOT_DATABASE_SHEET_ID,
+      range: 'STATUS!A2'
     });
 
+    const sheetStatus = res?.data?.values?.[0]?.[0]?.toLowerCase() || 'unknown';
+    let activity = 'Unknown status!';
+    let presence = 'dnd'; // default to DND if unknown
+
+    if (sheetStatus === 'online') {
+      activity = 'over the BCSO.';
+      presence = 'online';
+    } else if (sheetStatus === 'maintenance') {
+      activity = 'Undergoing maintenance!';
+      presence = 'idle';
+    }
+
+    console.log(`[Status Monitor] Sheet status: ${sheetStatus} → Presence: ${presence} | Activity: Watching ${activity}`);
+
+    await client.user.setPresence({
+      activities: [{ name: `Watching ${activity}`, type: 3 }], // type 3 = WATCHING
+      status: presence,
+    });
   } catch (err) {
-    console.error('[Status Monitor] Failed to update presence:', err.response?.data || err.message);
+    console.error('[Status Monitor] Failed to update presence from sheet:', err.response?.data || err.message);
   }
 }
 
