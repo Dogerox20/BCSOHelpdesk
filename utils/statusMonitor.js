@@ -20,13 +20,13 @@ async function updateBotStatus(client) {
 
     if (sheetStatus === 'online') {
       // Fetch number of deputies from P16 in General-Membership
-      console.log('[Status Monitor] Fetching deputy count from:', SHEET_ID, '→ General-Membership!P16');
+      
       const deputyRes = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
         range: 'General-Membership!P16'
       });
 
-      console.log('[Status Monitor] Full deputyRes:', JSON.stringify(deputyRes.data));
+      
       let deputyCount = deputyRes?.data?.values?.[0]?.[0]?.trim();
       console.log('[Status Monitor] Deputy Count from P16:', deputyCount);
 
