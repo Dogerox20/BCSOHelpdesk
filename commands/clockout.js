@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const sheets = require('../utils/sheets');
 const logCommand = require('../utils/embedLogger');
-const checkBlacklist = require('./checkBlacklist');
+const checkBlacklist = require('../utils/checkBlacklist');
 const { startSurvey } = require('../utils/surveyManager');
 const { SHEET_ID, BOT_DATABASE_SHEET_ID, LOG_CHANNEL_ID, CLOCKIN_ROLE_ID } = require('../config');
 
