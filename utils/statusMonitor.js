@@ -1,4 +1,4 @@
-// ✅ utils/statusMonitor.js — Adds emojis + ensures idle presence works
+// ✅ utils/statusMonitor.js — Fixes double "Watching" and emoji placement
 const sheets = require('./sheets');
 const { BOT_DATABASE_SHEET_ID } = require('../config');
 
@@ -16,17 +16,17 @@ async function updateBotStatus(client) {
     let presence = 'dnd';
 
     if (sheetStatus === 'online') {
-      activity = '🛡️ over the BCSO.';
+      activity = '🛡️ BCSO operations';
       presence = 'online';
     } else if (sheetStatus === 'maintenance') {
-      activity = '🔧 Undergoing maintenance!';
+      activity = '🔧 Maintenance mode';
       presence = 'idle';
     }
 
-    console.log(`[Status Monitor] Sheet status: ${sheetStatus} → Presence: ${presence} | Activity: Watching ${activity}`);
+    console.log(`[Status Monitor] Sheet status: ${sheetStatus} → Presence: ${presence} | Activity: ${activity}`);
 
     await client.user.setPresence({
-      activities: [{ name: `Watching ${activity}`, type: 3 }],
+      activities: [{ name: activity, type: 3 }], // type 3 = Watching
       status: presence,
     });
   } catch (err) {
