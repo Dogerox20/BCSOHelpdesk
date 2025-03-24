@@ -16,10 +16,10 @@ async function updateBotStatus(client) {
     let presence = 'dnd';
 
     if (sheetStatus === 'online') {
-      activity = '🛡️ BCSO operations';
+      activity = 'over BCSO operations';
       presence = 'online';
     } else if (sheetStatus === 'maintenance') {
-      activity = '🔧 Maintenance mode';
+      activity = 'Maintenance mode';
       presence = 'idle';
     }
 
