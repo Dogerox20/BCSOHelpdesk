@@ -25,6 +25,20 @@ module.exports = {
 
   async execute(interaction, client) {
     const discordId = interaction.user.id;
+    const allowedRoleId = '1348493509698781216';
+    const hasRank = interaction.member.roles.cache.has(allowedRoleId);
+    if (!hasRank) {
+      await interaction.reply({ content: '❌ You are not a high enough of a rank to use this command!', ephemeral: true });
+      await logCommand({
+        client,
+        commandName: 'clockout',
+        user: interaction.user,
+        status: 'Denied',
+        description: `User did not meet rank requirement (missing role ID ${allowedRoleId}).`
+      });
+      return;
+    }
+
     const activeSheet = 'ACTIVECLOCKINS';
     const logSheet = 'LOGGEDCLOCKINS';
     const generalSheet = 'General-Membership';
@@ -33,7 +47,6 @@ module.exports = {
     const timestamp = new Date().toISOString();
 
     try {
-      // Step 1: Get current ACTIVE clock-ins
       const res = await sheets.spreadsheets.values.get({
         spreadsheetId: BOT_DATABASE_SHEET_ID,
         range: `${activeSheet}!A2:C`,
@@ -67,7 +80,6 @@ module.exports = {
       const sessionMs = endTime - startTime;
       const sessionTime = formatDuration(sessionMs);
 
-      // Step 2: Log session to LOGGEDCLOCKINS
       await sheets.spreadsheets.values.append({
         spreadsheetId: BOT_DATABASE_SHEET_ID,
         range: `${logSheet}!A:E`,
@@ -84,7 +96,6 @@ module.exports = {
         }
       });
 
-      // Step 3: Clear from ACTIVECLOCKINS
       await sheets.spreadsheets.values.update({
         spreadsheetId: BOT_DATABASE_SHEET_ID,
         range: `${activeSheet}!A${actualRow}:C${actualRow}`,
@@ -92,9 +103,7 @@ module.exports = {
         requestBody: { values: [['', '', '']] },
       });
 
-      // Step 4: Add time to General-Membership!R
       const idRange = 'F12:F118';
-      const timeRange = 'R12:R118';
       const idRes = await sheets.spreadsheets.values.get({
         spreadsheetId: SHEET_ID,
         range: `${generalSheet}!${idRange}`,
@@ -122,10 +131,8 @@ module.exports = {
         });
       }
 
-      // Step 5: Reply to user
       await interaction.reply({ content: `✅ You have clocked out. Total time: **${sessionTime}**`, ephemeral: true });
 
-      // Step 6: Log to staff log
       await logCommand({
         client,
         commandName: 'clockout',
@@ -134,7 +141,6 @@ module.exports = {
         description: `Clocked out. Duration: ${sessionTime} — Time added to General-Membership sheet.`,
       });
 
-      // Step 7: Start post-shift survey via DM
       await startSurvey(interaction.user, client);
 
     } catch (error) {

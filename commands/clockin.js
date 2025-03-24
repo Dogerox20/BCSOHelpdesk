@@ -13,6 +13,21 @@ module.exports = {
   async execute(interaction, client) {
     const discordId = interaction.user.id;
 
+    // Role rank restriction check
+    const allowedRoleId = '1348493509698781216';
+    const hasRank = interaction.member.roles.cache.has(allowedRoleId);
+    if (!hasRank) {
+      await interaction.reply({ content: '❌ You are not a high enough of a rank to use this command!', ephemeral: true });
+      await logCommand({
+        client,
+        commandName: 'clockin',
+        user: interaction.user,
+        status: 'Denied',
+        description: `User did not meet rank requirement (missing role ID ${allowedRoleId}).`
+      });
+      return;
+    }
+
     // Check for blacklist
     const reason = await checkBlacklist(discordId);
     if (reason) {
