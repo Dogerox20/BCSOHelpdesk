@@ -1,9 +1,9 @@
-// ✅ utils/statusMonitor.js — Logs status changes to a public announcements channel
+// ✅ utils/statusMonitor.js — Includes deputy count from P16 in activity
 const sheets = require('./sheets');
-const { BOT_DATABASE_SHEET_ID } = require('../config');
+const { BOT_DATABASE_SHEET_ID, SHEET_ID } = require('../config');
 const { EmbedBuilder } = require('discord.js');
 
-let lastStatus = null; // Stores the last known status
+let lastStatus = null;
 
 async function updateBotStatus(client) {
   try {
@@ -19,21 +19,28 @@ async function updateBotStatus(client) {
     let presence = 'dnd';
 
     if (sheetStatus === 'online') {
-      activity = 'over BCSO operations.';
+      // Fetch number of deputies from P16 in General-Membership sheet
+      const deputyRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: 'General-Membership!P16'
+      });
+      const deputyCount = deputyRes?.data?.values?.[0]?.[0] || '?';
+
+      activity = `over ${deputyCount} Deputies.`;
       presence = 'online';
     } else if (sheetStatus === 'maintenance') {
-      activity = 'maintenance mode.';
+      activity = 'over maintenance protocols.';
       presence = 'idle';
     }
 
     console.log(`[Status Monitor] Sheet status: ${sheetStatus} → Presence: ${presence} | Activity: ${activity}`);
 
     await client.user.setPresence({
-      activities: [{ name: activity, type: 3 }], // WATCHING
+      activities: [{ name: `Watching ${activity}`, type: 3 }], // WATCHING
       status: presence,
     });
 
-    // Log status changes in embed format
+    // Log status changes
     if (lastStatus && lastStatus !== sheetStatus && ['online', 'maintenance'].includes(sheetStatus)) {
       const channel = client.channels.cache.get('1348499008363958282');
       if (channel) {
@@ -42,8 +49,8 @@ async function updateBotStatus(client) {
           .setColor(sheetStatus === 'online' ? 0x00b15e : 0xffcc00)
           .setDescription(
             sheetStatus === 'online'
-              ? '✅ The system is now **Online** and operational. Commands should work as intended.'
-              : '🛠️ The system has entered **Maintenance Mode** please check the status page for more information you can locate it in the bots About Me section. ***Commands may not be operable during maintenance.***'
+              ? '✅ The system is now Online and operational. Commands should work as intended.'
+              : '🛠️ The system has entered Maintenance Mode please check the status page for more information you can locate it in the bots About Me section.'
           )
           .setFooter({ text: 'BCSO Helpdesk Status', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
