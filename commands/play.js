@@ -1,4 +1,3 @@
-// commands/play.js
 const { SlashCommandBuilder } = require('discord.js');
 const {
   joinVoiceChannel,
@@ -29,6 +28,8 @@ module.exports = {
       return interaction.reply({ content: '❌ You must be in a voice channel to use this command.', ephemeral: true });
     }
 
+    await interaction.deferReply({ ephemeral: true });
+
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
       guildId: interaction.guild.id,
@@ -39,20 +40,20 @@ module.exports = {
       await entersState(connection, VoiceConnectionStatus.Ready, 5_000);
 
       const player = createAudioPlayer();
-      const filePath = path.join(__dirname, '../audio/sample.mp3'); // You can rename 'sample.mp3' to any file you place in the /audio folder
+      const filePath = path.join(__dirname, '../audio/troll.mp3'); // Your file here
       const resource = createAudioResource(filePath);
 
       player.play(resource);
       connection.subscribe(player);
 
       player.on(AudioPlayerStatus.Idle, () => {
-        connection.destroy();
+        connection.destroy(); // Leave when done
       });
 
-      await interaction.reply({ content: '🎶 Playing audio...', ephemeral: true });
+      await interaction.editReply({ content: '🎶 Now playing `troll.mp3`!' });
     } catch (err) {
       console.error(err);
-      await interaction.reply({ content: '❌ Failed to play audio.', ephemeral: true });
+      await interaction.editReply({ content: '❌ Failed to connect or play audio.' });
     }
   }
 };
