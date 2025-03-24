@@ -31,40 +31,49 @@ module.exports = {
     const filePath = path.join(__dirname, '..', 'audio', 'troll.mp3');
 
     if (!fs.existsSync(filePath)) {
-      console.error('❌ File not found:', filePath);
       return interaction.reply({ content: '❌ Audio file not found.', ephemeral: true });
     }
 
     await interaction.reply({ content: '🔊 Attempting to play audio...' });
 
-    try {
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: interaction.guild.id,
-        adapterCreator: interaction.guild.voiceAdapterCreator,
-        selfDeaf: false,
-      });
+    const connection = joinVoiceChannel({
+      channelId: voiceChannel.id,
+      guildId: interaction.guild.id,
+      adapterCreator: interaction.guild.voiceAdapterCreator,
+      selfDeaf: false,
+    });
 
-      await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
+    // Catch connection errors early
+    connection.on('error', err => {
+      console.error('🚨 Voice connection error:', err);
+    });
+
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
       console.log('✅ Voice connection established.');
 
       const resource = createAudioResource(filePath);
       const player = createAudioPlayer();
 
+      player.on('error', error => {
+        console.error('🎧 Audio player error:', error);
+      });
+
       player.play(resource);
       connection.subscribe(player);
 
-      await entersState(player, AudioPlayerStatus.Playing, 5_000);
+      await entersState(player, AudioPlayerStatus.Playing, 10_000);
       console.log('▶️ Audio is now playing.');
 
-      player.on(AudioPlayerStatus.Idle, () => {
-        console.log('🔈 Playback finished.');
+      player.once(AudioPlayerStatus.Idle, () => {
+        console.log('🎵 Playback ended, destroying connection.');
         connection.destroy();
       });
 
     } catch (err) {
       console.error('❌ Playback Error:', err);
-      await interaction.editReply({ content: '❌ Failed to connect or play audio.' });
+      connection.destroy();
+      await interaction.editReply({ content: `❌ Playback Error: ${err.name}: ${err.message}` });
     }
   }
 };
